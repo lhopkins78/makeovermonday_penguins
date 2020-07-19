@@ -66,6 +66,32 @@ fancyRpartPlot(penguin_model, palettes="Greens",
                caption="Data source: Kristen Gorman, 2017. Decision tree model: @lauriejhopkins")
 dev.off()
 
+#create random forest
+library(randomForest)
+library(party)
+library(reprtree)
 
+penguin_train_2 <- penguin_train %>% select(Species, c_length=`Culmen Length (mm)`, c_depth=`Culmen Depth (mm)`, f_length =`Flipper Length (mm)`, b_mass= `Body Mass (g)`)
+penguin_train_2 <- penguin_train_2 %>% mutate(Species=recode(Species, `Adelie Penguin (Pygoscelis adeliae)`="Adelie", 
+                                                             `Chinstrap penguin (Pygoscelis antarctica)`="Chinstrap",
+                                                             `Gentoo penguin (Pygoscelis papua)`="Gentoo"))
 
+penguin_rf <- randomForest(as.factor(Species) ~ ., data=penguin_train_2[complete.cases(penguin_train_2)==T,],
+                           ntree=500)
 
+penguin_cf <- cforest(as.factor(Species) ~., data=penguin_train_2[complete.cases(penguin_train_2)==T,])
+
+pt <- prettytree(penguin_cf@ensemble[[1]], names(penguin_cf@data@get("input"))) 
+nt <- new("BinaryTree") 
+nt@tree <- pt 
+nt@data <- penguin_cf@data 
+nt@responses <- penguin_cf@responses 
+
+plot(nt, type="simple", main="Random forest - Classifying penguins at Palmer station")
+
+#Final rf plot using reprtree
+reprtree:::plot.getTree(penguin_rf, main="Random forest (representative tree) - Classifying penguins at Palmer station")
+
+#confusion table
+pen_table <- as.data.frame(penguin_rf$confusion)
+formattable(pen_table)
